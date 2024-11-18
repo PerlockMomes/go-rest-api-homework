@@ -48,7 +48,10 @@ func getTasks(write http.ResponseWriter, request *http.Request) {
 	}
 	write.Header().Set("Content-Type", "application/json")
 	write.WriteHeader(http.StatusOK)
-	write.Write(response)
+	if _, err := write.Write(response); err != nil {
+		fmt.Fprint(write, "Произошла ошибка записи ответа")
+		return
+	}
 }
 
 func postTask(write http.ResponseWriter, request *http.Request) {
@@ -61,6 +64,11 @@ func postTask(write http.ResponseWriter, request *http.Request) {
 	}
 	if err = json.Unmarshal(buffer.Bytes(), &task); err != nil {
 		http.Error(write, err.Error(), http.StatusBadRequest)
+		return
+	}
+	_, exist := tasks[task.ID]
+	if exist {
+		http.Error(write, "Задача с таким ID уже существует", http.StatusBadRequest)
 		return
 	}
 	tasks[task.ID] = task
@@ -78,12 +86,15 @@ func getTaskById(write http.ResponseWriter, request *http.Request) {
 	}
 	response, err := json.Marshal(task)
 	if err != nil {
-		http.Error(write, err.Error(), http.StatusBadRequest)
+		http.Error(write, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	write.Header().Set("Content-Type", "application/json")
 	write.WriteHeader(http.StatusOK)
-	write.Write(response)
+	if _, err := write.Write(response); err != nil {
+		fmt.Fprint(write, "Произошла ошибка записи ответа")
+		return
+	}
 }
 
 func deleteTaskById(write http.ResponseWriter, request *http.Request) {
@@ -91,6 +102,7 @@ func deleteTaskById(write http.ResponseWriter, request *http.Request) {
 	task, exist := tasks[id]
 	if !exist {
 		http.Error(write, "Задача с таким ID не найдена", http.StatusBadRequest)
+		return
 	}
 	delete(tasks, task.ID)
 	write.Header().Set("Content-Type", "application/json")
